@@ -4,10 +4,11 @@ const jwt = require("jsonwebtoken");
 const bcryptjs = require('bcryptjs');
 const User = require('../models/user_model');
 const auth = require('../middleware/jwt');
-
+const Cloud = require('../middleware/cloud_upload');
+const fileUpload = require('../middleware/file_handler');
 
 //REGISTER
-router.post("/register", async (req, res) => {
+router.post("/register", fileUpload.single('profile'), Cloud, async (req, res) => {
     const {name, username, email, phone, password} = req.body;
     try{
         let user_email_exist = await User.findOne({email:email});
@@ -36,6 +37,7 @@ router.post("/register", async (req, res) => {
             user.phone = phone;
             const salt = await bcryptjs.genSalt(10);
             user.password = await bcryptjs.hash(password, salt);
+            user.photo=req.imgUrl;
 
             await user.save();
             const payload ={
@@ -106,7 +108,7 @@ router.post("/login", async (req, res) => {
 });
 
 //Reset profile
-router.put("/edit-profile" , auth, async (req, res) => {
+router.put("/edit-profile" , auth, fileUpload.single('profile'), Cloud, async (req, res) => {
     try{
         const {name, username, phone} = req.body;
         console.log(name,username,phone);
@@ -124,10 +126,10 @@ router.put("/edit-profile" , auth, async (req, res) => {
             });
         }
         const user = await User.findById(req.user.id);
-
         user.name=name;
         user.username=username;
         user.phone=phone;
+        user.photo=req.imgUrl;
         await user.save();
         res.status(200).json({
             msg:"Profile edited"
